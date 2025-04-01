@@ -1,0 +1,15 @@
+version: '3.12'
+
+services:
+  app:
+    container_name: trainloop
+    build:
+      context: .
+      dockerfile: ./Dockerfile # путь до докерфайла
+    command: python train_optuna.py
+    ports: 
+      - 6000:6000
+    # environment:
+      # - DB_USER=${user} # какие-нить переменные серды
+    volumes:
+      - .:/app # внешняя папка данные которой хочешь юзать в контейнере

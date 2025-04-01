@@ -1,0 +1,29 @@
+name: clip-siamese-313
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - jupyter
+  - python
+  - pip
+  - numpy
+  - pandas
+  - matplotlib
+  - scikit-learn
+  - tqdm
+  - pillow
+  - ipython
+  - ipykernel
+  - opencv
+  - pytorch
+  - torchvision
+  - pip:
+      - timm
+      - torchinfo
+      - transformers
+      - data_parser
+      - datasets
+      - python-dotenv
+      - more-itertools
+      - wandb
+      - huggingface_hub[hf_transfer]
