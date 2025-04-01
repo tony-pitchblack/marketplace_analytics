@@ -1,7 +1,9 @@
 # Parameters for main()
+import os
+
 DATA_PATH = 'data/'
-IMG_DIR = os.path.join(DATA_PATH, 'images_5k/')
-MODELS_DIR = os.path.join(DATA_PATH, 'train_results/')
+TABLE_DATASET_FILE = 'new_labeled.csv'
+IMG_DATASET_NAME = 'images_7k'
 NAME_MODEL_NAME = 'DeepPavlov/distilrubert-tiny-cased-conversational-v1'
 DESCRIPTION_MODEL_NAME = 'cointegrated/rubert-tiny'
 
@@ -12,6 +14,7 @@ from timm import create_model
 import torch
 from torch import nn
 from transformers import AutoModel
+import tqdm
 
 class RuCLIPtiny(nn.Module):
     def __init__(self, name_model_name: str):
@@ -214,6 +217,71 @@ class SiameseRuCLIP(nn.Module):
         out = self.head(x)
         return out
 
+from sklearn.metrics import f1_score
+
+def train(model, optimizer, criterion, 
+          epochs_num, train_loader, valid_loader=None, 
+          score=f1_score, device='cpu', print_epoch=False) -> None:
+    model.train()
+    counter = []
+    loss_history = [] 
+    it_number = 0
+    best_valid_score = 0
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min",
+                                                               factor=0.1, patience=2,
+                                                               threshold=0.0001,
+                                                               threshold_mode='rel', cooldown=0,
+                                                               min_lr=0, eps=1e-08)
+    for epoch in range(epochs_num):
+        print("Epoch：", epoch)
+        for i, data in enumerate(tqdm(train_loader)):
+            im1, name1, desc1, im2, name2, desc2, label = data 
+            im1, name1, desc1, im2, name2, desc2, label = im1.to(device), name1.to(device), desc1.to(device), im2.to(device), name2.to(device), desc2.to(device), label.to(device)
+            optimizer.zero_grad() 
+            out = model(im1, name1, desc1, im2, name2, desc2)
+            loss = criterion(out, label)
+            loss.backward()
+            optimizer.step()
+            if i % 5 == 0: # show changes of loss value after each 10 batches
+                it_number += 5
+                counter.append(it_number)
+                loss_history.append(loss.item())
+        # test after each epoch
+        if print_epoch:
+            valid_score = validation(model, valid_loader, score, device)
+            plot_epoch(loss_history)
+            print(f'Current loss: {loss}')
+            print(f'Current {score.__name__}: {valid_score}')
+            scheduler.step(valid_score)
+            if valid_score > best_valid_score:
+                best_valid_score = valid_score
+    return best_valid_score
+
+def plot_epoch(loss_history)->None:
+    display.clear_output(wait=True)
+    plt.figure(figsize=(8, 6))
+    plt.title("Training loss")
+    plt.xlabel("Iteration number")
+    plt.ylabel("Loss")
+    plt.plot(loss_history, 'b')
+    plt.show()
+
+def validation(model, valid_loader, score, device='cuda') -> float:
+    correct_val = 0
+    with torch.no_grad(): 
+        model.eval()
+        for data in tqdm(valid_loader):
+            im1, name1, desc1, im2, name2, desc2, label = data 
+            # Move all input tensors to the specified device
+            im1, name1, desc1, im2, name2, desc2, label = im1.to(device), name1.to(device), desc1.to(device), im2.to(device), name2.to(device), desc2.to(device), label.to(device)  
+            out = model(im1, name1, desc1, im2, name2, desc2) 
+            _, predicted = torch.max(out.data, -1)
+            predicted = predicted.cpu().numpy()
+            # Move label to CPU and convert to NumPy array
+            label = label.cpu().numpy()  # Added this line
+            correct_val += score(label, predicted)
+            # break
+    return correct_val / len(valid_loader)
 
 # ------------------------------
 # Main Execution Code
@@ -227,8 +295,10 @@ def main():
     import numpy as np
     import os
 
-    
-    labeled = pd.read_csv(os.path.join(DATA_PATH, 'labeled.csv'))
+    labeled = pd.read_csv(DATA_PATH + TABLE_DATASET_FILE)
+
+    images_dir = DATA_PATH + IMG_DATASET_NAME
+    models_dir = DATA_PATH + 'trained_models/'
     
     BATCH_SIZE = 50
     EPOCHS = 15
@@ -246,11 +316,11 @@ def main():
         valid_df = X.iloc[valid_index]
         valid_labels = y[valid_index]
         
-        train_dataset = SiameseRuCLIPDataset(df=train_df, labels=train_labels, images_dir=IMG_DIR,
+        train_dataset = SiameseRuCLIPDataset(df=train_df, labels=train_labels, images_dir=images_dir,
                                               name_model_name=NAME_MODEL_NAME,
                                               description_model_name=DESCRIPTION_MODEL_NAME)
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
-        valid_dataset = SiameseRuCLIPDataset(df=valid_df, labels=valid_labels, images_dir=IMG_DIR,
+        valid_dataset = SiameseRuCLIPDataset(df=valid_df, labels=valid_labels, images_dir=images_dir,
                                               name_model_name=NAME_MODEL_NAME,
                                               description_model_name=DESCRIPTION_MODEL_NAME)
         valid_loader = DataLoader(valid_dataset, batch_size=BATCH_SIZE)
@@ -259,7 +329,7 @@ def main():
         model = SiameseRuCLIP(preload_ruclip=False,
                               preload_model_name='',  # not used when preload_ruclip is False
                               device=DEVICE,
-                              models_dir=MODELS_DIR,
+                              models_dir=models_dir,
                               name_model_name=NAME_MODEL_NAME,
                               description_model_name=DESCRIPTION_MODEL_NAME)
         criterion = torch.nn.CrossEntropyLoss()
