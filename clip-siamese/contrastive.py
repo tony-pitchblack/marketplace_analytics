@@ -72,7 +72,6 @@ def make_tg_report(text) -> None:
             data={'chat_id': chat_id, 'text': text} 
         ).json()
 
-
 class RuCLIPtiny(nn.Module):
     def __init__(self):
         super().__init__()
@@ -80,16 +79,10 @@ class RuCLIPtiny(nn.Module):
                                    pretrained=False, # TODO: берём претрейн
                                    num_classes=0,
                                    in_chans=3)  # out 768
-        # text_config = DistilBertConfig(**{"vocab_size": 30522,
-        #                                   "max_position_embeddings": 512,
-        #                                   "n_layers": 3,
-        #                                   "n_heads": 12,
-        #                                   "dim": 264,
-        #                                   "hidden_dim": 792,
-        #                                   "model_type": "distilbert"})
-        # self.transformer = DistilBertModel(text_config)
-        self.transformer = AutoModel.from_pretrained(NAME_MODEL_NAME) # 312
-        self.final_ln = torch.nn.Linear(312, 768) # 312 -> 768
+
+        self.transformer = AutoModel.from_pretrained(NAME_MODEL_NAME)
+        name_model_output_shape = self.transformer.config.hidden_size  # dynamically get hidden size
+        self.final_ln = torch.nn.Linear(name_model_output_shape, 768)  # now uses the transformer hidden size
         self.logit_scale = torch.nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
 
     @property
@@ -119,6 +112,7 @@ class RuCLIPtiny(nn.Module):
         logits_per_text = logits_per_image.t()
 
         return logits_per_image, logits_per_text
+    
     
 def get_transform():
     return transforms.Compose([
