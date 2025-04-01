@@ -1,0 +1,15 @@
+flask
+joblib
+python-math
+requests
+datetime
+xgboost
+scikit-learn
+transformers
+sentence_transformers
+pandas
+numpy
+more_itertools
+torchvision
+optuna
+torch

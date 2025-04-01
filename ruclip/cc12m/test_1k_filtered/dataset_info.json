@@ -1,0 +1,55 @@
+{
+  "builder_name": "csv",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "csv",
+  "dataset_size": 3824885299,
+  "description": "",
+  "download_checksums": {
+    "D:/work/market_place/competitors/ruclip_models/cc12m/Conceptual 12M russian.csv": {
+      "num_bytes": 3762862810,
+      "checksum": null
+    }
+  },
+  "download_size": 3762862810,
+  "features": {
+    "url": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "image": {
+      "_type": "Image"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 7587748109,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 3824885299,
+      "num_examples": 12423374,
+      "shard_lengths": [
+        1620000,
+        1620000,
+        1620000,
+        1620000,
+        1620000,
+        1620000,
+        1710000,
+        993374
+      ],
+      "dataset_name": "csv"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}
