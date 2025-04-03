@@ -48,15 +48,15 @@ class CompetitorsSearch:
         self.y = None
         self.save_latents = save_latents
         
-    def make_tg_report(self, text) -> None:
-        token = '6498069099:AAFtdDZFR-A1h1F-8FvOpt6xIzqjCbdLdsc'
-        method = 'sendMessage'
-        chat_id = 324956476
+    # def make_tg_report(self, text) -> None:
+    #     token = '6498069099:AAFtdDZFR-A1h1F-8FvOpt6xIzqjCbdLdsc'
+    #     method = 'sendMessage'
+    #     chat_id = 324956476
 
-        _ = requests.post(
-                url='https://api.telegram.org/bot{0}/{1}'.format(token, method),
-                data={'chat_id': chat_id, 'text': text}
-            ).json()
+    #     _ = requests.post(
+    #             url='https://api.telegram.org/bot{0}/{1}'.format(token, method),
+    #             data={'chat_id': chat_id, 'text': text}
+    #         ).json()
         
     def get_shard_name(e) -> str:
         if 0 <= e <= 143:
@@ -452,7 +452,7 @@ class CompetitorsSearch:
 
 if __name__ == '__main__':
     # train_path = 'labeled.csv'
-    train_path = 'model_params_big_test//data.csv'
+    train_path = 'model_params_big_test/data.csv'
     competitors_search = CompetitorsSearch(save_latents=True)
     competitors_search.train(train_path)
     competitors_search.make_tg_report('Переделались данные')
