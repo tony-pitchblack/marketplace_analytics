@@ -8,7 +8,7 @@ COPY /ruclip/ /app/ruclip
 # RUN pip install --upgrade pip
 run pip install cython
 run pip install youtokentome
-RUN pip install -r data/requirements.txt
+RUN pip install -r requirements.txt
 # RUN pip install --upgrade sentence-transformers huggingface_hub
  
 EXPOSE 6000
