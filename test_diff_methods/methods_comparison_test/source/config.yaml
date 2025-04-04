@@ -1,0 +1,17 @@
+#mpstats_token : '65ddd17d7a2011.184733406ca693eaa900f8cf86e212b476abc2cd' # токен @devashe
+mpstats_token : 66c04233432f66.5894123609e00723d37ad8ff3bd0e25d688cf5ba
+#'6922306118:AAFUVfmGR0yOIIpy3NfK94guoMljD2RCvbo' # @indeepa_labelling_bot
+#'6858858655:AAEd3LWi3jSVYkBhKR2O4lcxzz2aldh0uuQ' # @optimal_price_testing_bot
+#'6746744944:AAHFtzWeza9U_eAW1ck4lFq0lsUfnQoN6cc' # @indeepa_labeling_bot
+bot_token : '6922306118:AAFUVfmGR0yOIIpy3NfK94guoMljD2RCvbo'
+data_folder : source
+# мой ID в телеге для трека ошибок
+developer_chat_id : 324956476
+# какой топ брать
+top_n : 2000
+# сколько пар будет на один SKU
+result_pairs_num : 30 
+# доля объёма продаж от целевого товара для потенциальных конкурентов
+sales_fraction : 0.5
+# сколько истории брать для топ-300 и для целевого? пока берём неделю
+num_days_to_take : 7

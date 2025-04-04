@@ -1,19 +1,20 @@
-# marketplace
+# Модуль оптимальной цены и/или предсказания спроса
 
-## Product Matching
+## baseLine
+Модель спроса, включает тренд и сезонность (для обучения НС)
+
+## neural_net
+Нейросети, обученные на base_line
 
 
+## inference
 
 
-## Add your files
+![общая схема оптимальной цены](diagram.png)
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## optim_price_v2
+Оптимальная цена с учетом наличия на маркете
 
-```
-cd existing_repo
-git remote add origin https://gitlab.com/marketplace_indeepa/marketplace.git
-git branch -M main
-git push -uf origin main
-```
+## optim_price_v3 
+Оптимлальная цена, в которой вероятность наличия на складе считает нейросеть
 
