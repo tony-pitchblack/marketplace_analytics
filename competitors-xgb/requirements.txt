@@ -15,3 +15,4 @@ more_itertools
 torchvision
 optuna
 torch
+git+https://github.com/tony-pitchblack/ru-clip.git#egg=ruclip
