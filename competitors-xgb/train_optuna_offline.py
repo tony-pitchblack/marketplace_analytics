@@ -20,17 +20,22 @@ from sklearn.metrics import balanced_accuracy_score, f1_score
 
 import xgboost as xgb
 import optuna 
+from pathlib import Path
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, classification_report
 
 MPSTATS_TOKEN = '660c308b02abc1.461169310352435175768397cb1f37c4df2a2561'
 #'65ddd17d7a2011.184733406ca693eaa900f8cf86e212b476abc2cd'
 
 class CompetitorsSearch:
-    def __init__(self, sku_pairs = None, params_path:str='model_params_f1_skf_shuffle', is_debug:bool=True, save_latents=False) -> None: # TODO: change for test or prod
+    def __init__(self, sku_pairs = None, params_path:str='model_params_f1_skf_shuffle', is_debug:bool=True, save_latents=False,
+                 n_trials=300, timeout=600) -> None: # TODO: change for test or prod
         # data for inference
         self.sku_pairs = sku_pairs
         self.is_need_pretrain = True if sku_pairs is None else False
         self.num_class = None
         self.cash = {'data':dict(), 'description':dict()}
+        Path(params_path).mkdir(parents=True, exist_ok=True)
         self.params_path = params_path
         self.xgboost_params_path = os.path.join(params_path, 'xgboost_model.json')
         self.scaler_params_path = os.path.join(params_path, 'std_scaler.bin')
@@ -47,6 +52,8 @@ class CompetitorsSearch:
         self.im_problems = None
         self.y = None
         self.save_latents = save_latents
+        self.n_trials = n_trials
+        self.timeout = timeout
         
     # def make_tg_report(self, text) -> None:
     #     token = '6498069099:AAFtdDZFR-A1h1F-8FvOpt6xIzqjCbdLdsc'
@@ -373,7 +380,7 @@ class CompetitorsSearch:
         self.make_dataframe() 
         self.make_scoring()
         df = self.df.drop(['sku_first', 'sku_second', 'name_first', 'description_first', # not changing df inside
-                'name_second', 'description_second', 'options_first', 'options_second'], axis=1)
+                'name_second', 'description_second', 'options_first', 'options_second', 'category_id', 'category_name'], axis=1, errors='ignore')
         
         features_scaled = scaler.transform(df)
         competitor_classes = xgboost_model.predict(features_scaled)
@@ -382,41 +389,95 @@ class CompetitorsSearch:
         return competitor_classes
 
     def train(self, data_path):
-        df = pd.read_csv(data_path) #[:20]   # TODO: test
-        df = df.sample(frac=1) # TODO: делаем перемешивание
-        # remap = {0:0, 0.1:0, 0.5:0, 0.7:1, 0.9:1, 1:1} 
-        # sku.replace({'y':remap}, inplace=True)
-        # sku.label = sku.y.apply(int)
-        self.y = df.label.copy()
-        self.num_class = df.label.unique().shape[0]
-        df.drop(columns='label', inplace=True)
-        # sku.columns = ['sku_first', 'sku_second', 'y']
-        # self.sku_pairs = sku[['sku_first', 'sku_second']]
-
-        # self.make_dataframe()   
-        self.df = df
-        # self.get_images_names()
-        # self.make_scoring()
-        X = self.df.drop(['sku_first', 'sku_second', 'name_first', 'description_first', # not changing df inside
-                'name_second', 'description_second', 'options_first', 'options_second',
-                'image_url_first', 'image_url_second'], axis=1).copy()
-        # полный датасет, будем на нём 
-        y = self.y.copy()
+        # Read and shuffle data
+        df_full = pd.read_csv(data_path)
+        df_full.to_csv(Path(self.params_path) / 'data.csv', index=False)   
+        assert 'category_id' in df_full.columns, 'category_id not in test_df'
         
-        scaler = StandardScaler()
-        X = scaler.fit_transform(X)
-        optuna_params = self.optuna_gridsearch(X, y)
-        clf = xgb.XGBClassifier(**optuna_params.params)
-        clf.fit(X, y)
+        df_full = df_full.sample(frac=1, random_state=42).reset_index(drop=True)
+        self.num_class = len(np.unique(df_full.label))
 
-        if not os.path.isdir(self.params_path):
-            os.mkdir(self.params_path)
+        # Split dev/test (80/20 split) stratifying by the combination of 'label' and 'category_id'
+        stratify_col = df_full[['label', 'category_id']].apply(lambda row: f"{row['label']}_{row['category_id']}", axis=1)
+        dev_df, test_df = train_test_split(df_full, test_size=0.2, random_state=42, stratify=stratify_col)
+        assert 'category_id' in dev_df.columns, 'category_id not in test_df'
+        assert 'category_id' in test_df.columns, 'category_id not in test_df'
 
-        self.df = pd.concat([self.df, self.y.to_frame('label')], axis=1)
-        self.df.to_csv(os.path.join(self.params_path, 'data.csv'), index=False)
-        clf.save_model(self.xgboost_params_path)
-        joblib.dump(scaler, self.scaler_params_path, compress=True)
-        
+        # Save test set
+        Path(self.params_path).mkdir(parents=True, exist_ok=True)
+        test_df.to_csv(Path(self.params_path) / 'data_test.csv', index=False)
+
+        # Separate labels and raw features in dev set
+        y_dev = dev_df.label.copy()
+        # TODO: drop category_id 
+        X_dev = dev_df.drop(columns=['label', 'sku_first', 'sku_second', 'name_first', 'description_first',
+                                      'name_second', 'description_second', 'options_first', 'options_second',
+                                      'image_url_first', 'image_url_second', 'category_id', 'category_name'], errors='ignore').copy()
+
+        # Gridsearch on dev set using raw features.
+        # Each CV split will use its own fresh scaler.
+        # Convert to numpy arrays to simplify indexing.
+        best_trial = self.optuna_gridsearch(X_dev.to_numpy(), y_dev.to_numpy())
+
+        # Now fit fresh scaler on whole dev set for final model training on dev
+        scaler_dev = StandardScaler()
+        X_dev_scaled = scaler_dev.fit_transform(X_dev)
+        clf_dev = xgb.XGBClassifier(**best_trial.params)
+        clf_dev.fit(X_dev_scaled, y_dev)
+
+        # Save the dev-fitted model and scaler
+        model_fit_on_dev_path = Path(self.params_path) / 'xgboost_model_fit_on_dev.json'
+        scaler_fit_on_dev_path = Path(self.params_path) / 'std_scaler_fit_on_dev.bin'
+        clf_dev.save_model(str(model_fit_on_dev_path))
+        joblib.dump(scaler_dev, scaler_fit_on_dev_path, compress=True)
+
+        # Prepare test set features and labels using the dev-fitted scaler
+        y_test = test_df.label.copy()
+        X_test = test_df.drop(columns=['label', 'sku_first', 'sku_second', 'name_first', 'description_first',
+                                       'name_second', 'description_second', 'options_first', 'options_second',
+                                       'image_url_first', 'image_url_second', 'category_id', 'category_name'], errors='ignore').copy()
+        X_test_scaled = scaler_dev.transform(X_test)
+
+        # Evaluate on test set
+        y_pred = clf_dev.predict(X_test_scaled)
+        global_accuracy = accuracy_score(y_test, y_pred)
+        global_f1 = f1_score(y_test, y_pred, average='macro')
+        global_precision = precision_score(y_test, y_pred, average='macro', zero_division=0)
+        global_recall = recall_score(y_test, y_pred, average='macro', zero_division=0)
+
+        # Save global evaluation metrics
+        global_metrics = pd.DataFrame({
+            'accuracy': [global_accuracy],
+            'f1_score': [global_f1],
+            'precision': [global_precision],
+            'recall': [global_recall]
+        })
+        global_metrics.to_csv(Path(self.params_path) / 'test_results.csv', index=False)
+
+        # Save per-class evaluation metrics
+        report_dict = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
+        # Exclude the 'accuracy' key and any overall averages
+        per_class_metrics = {k: v for k, v in report_dict.items() if k.isdigit()}
+        per_class_df = pd.DataFrame(per_class_metrics).transpose()
+        per_class_df.to_csv(Path(self.params_path) / 'test_results_per_class.csv', index=True)
+        print('Test metrics:')
+        print(global_metrics)
+
+        # Refit scaler and model on all data (dev + test)
+        df_all = pd.concat([dev_df, test_df]).reset_index(drop=True)
+        y_all = df_all.label.copy()
+        X_all = df_all.drop(columns=['label', 'sku_first', 'sku_second', 'name_first', 'description_first',
+                                      'name_second', 'description_second', 'options_first', 'options_second',
+                                      'image_url_first', 'image_url_second', 'category_id', 'category_name'], errors='ignore').copy()
+        scaler_all = StandardScaler()
+        X_all_scaled = scaler_all.fit_transform(X_all)
+
+        clf_all = xgb.XGBClassifier(**best_trial.params)
+        clf_all.fit(X_all_scaled, y_all)
+
+        # Save final model and scaler
+        clf_all.save_model(str(Path(self.params_path) / 'xgboost_model.json'))
+        joblib.dump(scaler_all, Path(self.params_path) / 'std_scaler.bin', compress=True)
 
     def optuna_gridsearch(self, X_train, y_train):
         def objective(param, train_x, train_y, valid_x, valid_y):
@@ -465,23 +526,52 @@ class CompetitorsSearch:
                 param["rate_drop"] = trial.suggest_float("rate_drop", 1e-8, 1.0, log=True)
                 param["skip_drop"] = trial.suggest_float("skip_drop", 1e-8, 1.0, log=True)
 
-            skf = StratifiedKFold(n_splits=3) # вот здесь НЕ перемешиваем. возможно, стоит ещё перемешать сам датасет
+            skf = StratifiedKFold(n_splits=3)
             scores = []
             for train_index, test_index in skf.split(X_train, y_train):
                 X_train_skf, X_test_skf = X_train[train_index], X_train[test_index]
-                y_train_skf, y_test_skf = y_train.iloc[train_index], y_train.iloc[test_index]
-                accuracy = objective(param, X_train_skf, y_train_skf, X_test_skf, y_test_skf)
+                y_train_skf, y_test_skf = y_train[train_index], y_train[test_index]
+                # Create a fresh scaler for this fold
+                scaler = StandardScaler()
+                X_train_skf_scaled = scaler.fit_transform(X_train_skf)
+                X_test_skf_scaled = scaler.transform(X_test_skf)
+                accuracy = objective(param, X_train_skf_scaled, y_train_skf, X_test_skf_scaled, y_test_skf)
                 scores.append(accuracy)
             return np.mean(scores)
 
-
         study = optuna.create_study(direction="maximize")
-        study.optimize(objective_cv, n_trials=300, timeout=600)
+        study.optimize(
+            objective_cv,
+            n_trials=self.n_trials,
+            timeout=self.timeout
+        )
         return study.best_trial
 
 if __name__ == '__main__':
     # train_path = 'labeled.csv'
-    train_path = 'model_params_big_test/data.csv'
-    competitors_search = CompetitorsSearch(save_latents=True)
+    # train_path = 'model_params_big_test/data.csv'
+
+
+    # Clustering 2
+    # train_path = 'res_balanced_accuracy/data_clustered_regex_classes=2.csv'
+    # params_path = 'stratified_clusters=2'
+
+    # train_path = 'model_params_big_test/data_clustered_regex_classes=2.csv'
+    # params_path = 'sims=True_stratified_clusters=2'
+
+
+    # Clustering 9
+    train_path = 'model_params_big_test/data_clustered_clusters=9_sku=211_model=gpt-4.1-mini.csv'
+    params_path = 'sims=True_stratified_clusters=9'
+
+    # train_path = 'res_balanced_accuracy/data_clustered_clusters=9_sku=211_model=gpt-4.1-mini.csv'
+    # params_path = 'stratified_clusters=9'
+
+    competitors_search = CompetitorsSearch(
+        save_latents=True,
+        params_path=params_path,
+
+        n_trials=300,
+        timeout=600
+    )
     competitors_search.train(train_path)
-    # competitors_search.make_tg_report('Переделались данные')
