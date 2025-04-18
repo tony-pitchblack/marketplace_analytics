@@ -1,10 +1,17 @@
+openai
+bertopic
+umap-learn
+matplotlib
+seaborn
 ipykernel
 ipywidgets
 flask
 joblib
 openpyxl
+optuna
 python-math
 requests
+shap
 datetime
 xgboost
 scikit-learn
