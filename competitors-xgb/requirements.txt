@@ -16,11 +16,13 @@ datetime
 xgboost
 scikit-learn
 transformers
+timm
 sentence-transformers
 pandas
 numpy
 more_itertools
 torchvision
 optuna
+opencv-python
 torch
 git+https://github.com/tony-pitchblack/ru-clip.git#egg=ruclip
