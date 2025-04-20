@@ -1,6 +1,6 @@
 openai
-bertopic
-umap-learn
+# bertopic
+# umap-learn
 matplotlib
 seaborn
 ipykernel
@@ -25,4 +25,5 @@ torchvision
 optuna
 opencv-python
 torch
+xgboost
 git+https://github.com/tony-pitchblack/ru-clip.git#egg=ruclip
