@@ -12,33 +12,23 @@ async def parallel_download_img(
     img_id_regex: str,
     dataset_name: str,
     base_download_dir: Path,
-    max_concurrency: int = 100,   # Maximum number of parallel downloads
-    delay: float = 1.0            # Delay (in seconds) before each download
+    max_concurrency: int = 100,
+    delay: float = 1.0
 ) -> list:
     """
-    Downloads images using an image ID extracted from the URL column and returns a list of image file names.
-    
-    This function controls the download rate by:
-      - Limiting parallel downloads via a semaphore (max_concurrency).
-      - Adding a delay before each download to mimic human behavior.
-    
-    Regex Usage:
-      - The `url_col` contains the image URL, from which the image ID is extracted.
-      - The `img_id_regex` must include one capture group (e.g., r'/(\d+)\.jpg$') that extracts the ID.
-      - If no match is found, the download for that row is skipped.
-    
+    Downloads images in parallel, preserving the input DataFrame order.
+
     Args:
-        df: Source DataFrame.
+        df: DataFrame containing image URLs.
         url_col: Column name with image URLs.
-        img_id_regex: Regex pattern with one capture group to extract the ID from the URL.
-        dataset_name: Folder to save images into.
+        img_id_regex: Regex with one capture group to extract the image ID from each URL.
+        dataset_name: Subfolder name under base_download_dir to save images.
         base_download_dir: Base directory for downloads.
-        max_concurrency: Maximum number of parallel downloads.
-        delay: Delay (in seconds) before each download.
-    
+        max_concurrency: Maximum simultaneous downloads.
+        delay: Delay before each download to rate-limit.
+
     Returns:
-        A list of downloaded image file names corresponding to each row in the DataFrame 
-        (or None for rows that failed).
+        List of downloaded filenames or None, ordered to match the DataFrame rows.
     """
     download_dir = Path(base_download_dir) / dataset_name
     download_dir.mkdir(parents=True, exist_ok=True)
@@ -47,42 +37,48 @@ async def parallel_download_img(
 
     async def fetch_image(session: aiohttp.ClientSession, url: str, save_path: Path) -> str:
         try:
-            async with session.get(url, timeout=10) as response:
-                response.raise_for_status()
-                content_type = response.headers.get('Content-Type', '')
-                ext = guess_extension(content_type.split(';')[0].strip()) or '.jpg'
+            async with session.get(url, timeout=10) as resp:
+                resp.raise_for_status()
+                content_type = resp.headers.get('Content-Type', '').split(';')[0].strip()
+                ext = guess_extension(content_type) or '.jpg'
                 if ext == '.jpe':
                     ext = '.jpg'
-                final_path = save_path.with_suffix(ext)
-                data = await response.read()
-                final_path.write_bytes(data)
-                return final_path.name
+                file_path = save_path.with_suffix(ext)
+                data = await resp.read()
+                file_path.write_bytes(data)
+                return file_path.name
         except Exception as e:
-            print(f"Failed to download {url}: {e}")
+            print(f"Error downloading {url}: {e}")
             return None
 
-    async def download_row(row, session) -> str:
+    async def download_url(idx: int, url: str, session: aiohttp.ClientSession) -> tuple[int, str]:
         async with sem:
             await asyncio.sleep(delay)
-            url = row[url_col]
-            if pd.isna(url):
-                return None
+            if pd.isna(url) or not isinstance(url, str):
+                return idx, None
 
-            match = re.search(img_id_regex, str(url))
+            match = re.search(img_id_regex, url)
             if not match:
-                print(f"Failed to extract image ID from URL: {url}")
-                return None
+                print(f"ID not found in URL: {url}")
+                return idx, None
 
             image_id = match.group(1)
-            return await fetch_image(session, url, download_dir / image_id)
+            filename = await fetch_image(session, url, download_dir / image_id)
+            return idx, filename
 
     async with aiohttp.ClientSession() as session:
-        tasks = [download_row(row, session) for _, row in df.iterrows()]
-        results = [
-            await coro for coro in tqdm(
-                asyncio.as_completed(tasks),
-                total=len(tasks),
-                desc="Downloading images"
-            )
-        ]
+        tasks = [asyncio.create_task(download_url(i, row[url_col], session))
+                 for i, row in df.iterrows()]
+
+        pbar = tqdm(total=len(tasks), desc="Downloading images")
+        for task in tasks:
+            task.add_done_callback(lambda _: pbar.update())
+
+        completed = await asyncio.gather(*tasks)
+
+    # Build ordered results
+    results = [None] * len(completed)
+    for idx, fname in completed:
+        results[idx] = fname
+
     return results
