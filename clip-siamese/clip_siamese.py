@@ -2,7 +2,7 @@
 import os
 
 DATA_PATH = 'data/'
-TABLE_DATASET_FILE = 'new_labeled.csv'
+TABLE_DATASET_FILE = 'labeled_5k_with-options.csv'
 IMG_DATASET_NAME = 'images_7k'
 NAME_MODEL_NAME = 'DeepPavlov/distilrubert-tiny-cased-conversational-v1'
 DESCRIPTION_MODEL_NAME = 'cointegrated/rubert-tiny'
