@@ -25,6 +25,9 @@ dependencies:
     - tqdm>=4.66.0
     - pandas>=2.2.0
     - python-dotenv>=1.0.0
+    - langchain>=0.2.11
+    - langchain-openai>=0.2.11
+    - langchain-community>=0.2.11
     - matplotlib>=3.8.0  # For visualizations (optional)
     - jupyter  # For running the notebook
     - ipykernel  # For Jupyter notebook kernel 
