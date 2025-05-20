@@ -7,23 +7,16 @@ DATA_PATH = 'data/'
 DEVICE='cuda' if torch.cuda.is_available() else 'cpu'
 NAME_MODEL_NAME = 'cointegrated/rubert-tiny' # 'DeepPavlov/distilrubert-tiny-cased-conversational-v1'
 DESCRIPTION_MODEL_NAME = 'cointegrated/rubert-tiny'
-
-# BATCH_SIZE=90
-# NUM_WORKERS=8
-# NUM_DEBUG_SAMPLES=None
-# EPOCHS=20
-
-BATCH_SIZE=1
-NUM_WORKERS=0
-NUM_DEBUG_SAMPLES=4 # minimum 4 samples (2 per each of train/val) for stratified split
-EPOCHS=1
-
+BATCH_SIZE=90 # TODO: 
+EPOCHS=20 # TODO:
 EMB_SIZE=768
 VALIDATION_SPLIT=.25
 SHUFFLE_DATASET=True
 RANDOM_SEED=42
-LR=9e-5
+NUM_WORKERS=8
+LR=9e-5 # TODO:
 MOMENTUM=0.9
+# N_SPLITS=3
 WEIGHT_DECAY=1e-2
 CONTRASTIVE_MARGIN=1.5
 CONTRASTIVE_THRESHOLD=0.3
@@ -32,34 +25,20 @@ SMTH='1gpu'
 
 ## CHOOSE DATA #########################################################
 
-# # These table files need 'image_name_first', 'image_name_second' constructed from sku to be usable in current pipeline
-# TABLE_DATASET_FILE = 'tables_labeled/processed/labeled_1.3k_with-options.csv'
-# TABLE_DATASET_FILE = 'tables_labeled/processed/labeled_56k_with-options.csv'
-# IMG_DATASET_NAME = 'images_7k'
-# STRATIFY_COLS = None
-
-# TABLE_DATASET_FILE = 'tables_labeled/processed/labeled_5k_with-options.csv'
-# IMG_DATASET_NAME = 'images_7k' 
-# STRATIFY_COLS = None
+TABLE_DATASET_FILE = 'tables_labeled/labeled_5k_with-options.csv'
+IMG_DATASET_NAME = 'images_7k' # same for all 'labeled.*' datasets
 
 # TABLE_DATASET_FILE = 'tables_WB_OZ_100/WB_OZ_100.csv'
 # TABLE_DATASET_FILE = 'tables_WB_OZ_100/WB_OZ_100_conjugated.csv'
 # TABLE_DATASET_FILE = 'tables_WB_OZ_100/WB_OZ_100_conjugated_shuffled_seed=42_fraction=1.csv'
 # TABLE_DATASET_FILE = 'tables_WB_OZ_100/WB_OZ_100_conjugated_shuffled_seed=42_fraction=0.5.csv'
 # IMG_DATASET_NAME = 'images_WB_OZ_100'
-# STRATIFY_COLS = None
 
-TABLE_DATASET_FILE = 'tables_OZ_geo_5500/processed/regex-pairwise-dataset_num-queries=20_num-pairs=6226_patterns-dict-hash=6dbf9b3ef9568e60cd959f87be7e3b26.csv'
-IMG_DATASET_NAME = 'images_OZ_geo_5500'
-STRATIFY_COLS = ['sku_first', 'label']
+# TABLE_DATASET_FILE = 'tables_OZ_geo_5500/regex-pairwise-dataset_num-queries=20_num-pairs=6226_patterns-dict-hash=6dbf9b3ef9568e60cd959f87be7e3b26.csv'
+# IMG_DATASET_NAME = 'images_OZ_geo_5500'
 
-## LOGGING PARAMS ######################################################################
+##################################################################
 
-MLFLOW_URI = "http://localhost:5000"
-MLFLOW_EXPERIMENT = "siamese/1fold"
-TELEGRAM_TOKEN = '' # supply for logging best metrics to TG
-
-# Imports
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -104,9 +83,9 @@ import matplotlib.pyplot as plt
 from IPython import display
 # import more_itertools
 
-from sklearn.model_selection import train_test_split
 
-def make_tg_report(text, token) -> None:
+def make_tg_report(text) -> None:
+    token = '6498069099:AAFtdDZFR-A1h1F-8FvOpt6xIzqjCbdLdsc'
     method = 'sendMessage'
     chat_id = 324956476
     _ = requests.post(
@@ -346,36 +325,26 @@ def validation(model, criterion, valid_loader, epoch, device='cpu') -> float:
     val_neg_accuracy = 0
     num_pos = 0
     num_neg = 0
-
     with torch.no_grad(): 
+        # model.eval()
         for data in tqdm(valid_loader):
             im1, name1, desc1, im2, name2, desc2, label = data 
-            im1, name1, desc1, im2, name2, desc2, label = (
-                im1.to(device), name1.to(device), desc1.to(device),
-                im2.to(device), name2.to(device), desc2.to(device), label.to(device)
-            )
+            im1, name1, desc1, im2, name2, desc2, label = im1.to(device), name1.to(device), desc1.to(device), im2.to(device), name2.to(device), desc2.to(device), label.to(device)
             out1, out2 = model(im1, name1, desc1, im2, name2, desc2) 
             loss = criterion(out1, out2, label)
             pos_acc, pos_sum, neg_acc, neg_sum = evaluate_pair(out1, out2, label, CONTRASTIVE_THRESHOLD)
-            val_pos_accuracy += pos_acc
-            val_neg_accuracy += neg_acc
-            num_pos += pos_sum
-            num_neg += neg_sum
+            val_pos_accuracy+=pos_acc
+            val_neg_accuracy+=neg_acc
+            num_pos+=pos_sum
+            num_neg+=neg_sum
             valid_loss += loss.item()
-
-    val_pos_accuracy = val_pos_accuracy / num_pos if num_pos > 0 else 0.0
-    val_neg_accuracy = val_neg_accuracy / num_neg if num_neg > 0 else 0.0
-    valid_loss = valid_loss / len(valid_loader) if len(valid_loader) > 0 else 0.0
-
-    report = (
-        f"Epoch: {epoch}, Validation loss: {valid_loss:.3f}, "
-        f"P Acc: {val_pos_accuracy:.3f}, N Acc: {val_neg_accuracy:.3f} " + SMTH + '\n'
-    )
+    val_pos_accuracy /= num_pos
+    val_neg_accuracy /= num_neg
+    valid_loss /= len(valid_loader)
+    report = f"Epoch: {epoch}, Validation loss: {valid_loss:.3f}, P Acc: {val_pos_accuracy:.3f}, N Acc: {val_neg_accuracy:.3f} "+SMTH+'\n'
     print(report)
-    make_tg_report(report, TELEGRAM_TOKEN)
-    
+    make_tg_report(report)
     return (val_pos_accuracy + val_neg_accuracy) / 2
-
 
 def plot_epoch(loss_history)->None:
     display.clear_output(wait=True)
@@ -417,67 +386,38 @@ def predict(out1, out2, threshold=CONTRASTIVE_THRESHOLD):
 
 def main():
     # mlflow pipeline
-    mlflow.set_tracking_uri(uri=MLFLOW_URI)
-    mlflow.set_experiment(MLFLOW_EXPERIMENT)
+    mlflow.set_tracking_uri(uri="http://10.99.0.126:5000")
+    mlflow.set_experiment("siamese/1fold")
     mlflow.enable_system_metrics_logging()
     ###########
-
-    images_dir = DATA_PATH + IMG_DATASET_NAME
-    labeled = pd.read_csv(DATA_PATH + TABLE_DATASET_FILE)
-
-    # 1) Sample (or shuffle) and reset index
-    if NUM_DEBUG_SAMPLES is not None:
-        n = min(NUM_DEBUG_SAMPLES, len(labeled))
-        labeled = labeled.sample(n=n, random_state=RANDOM_SEED)
-    else:
-        labeled = labeled.sample(frac=1, random_state=RANDOM_SEED)
-
-    labeled = labeled.reset_index(drop=True)
-
-    # 2) Stratified (or plain) split on the sampled DataFrame
-    if STRATIFY_COLS:
-        # build composite key
-        stratify = labeled[STRATIFY_COLS].astype(str).agg('_'.join, axis=1)
-
-        # find any strata of size 1 and force them into train
-        vc = stratify.value_counts()
-        single = vc[vc == 1].index
-        mask_single = stratify.isin(single)
-
-        # split only the “common” groups
-        train_common, valid_index = train_test_split(
-            labeled.index[~mask_single],
-            test_size=VALIDATION_SPLIT,
-            stratify=stratify[~mask_single],
-            random_state=RANDOM_SEED,
-            shuffle=True
-        )
-        # union back the singletons
-        train_index = labeled.index[mask_single].union(train_common)
-    else:
-        train_index, valid_index = train_test_split(
-            labeled.index,
-            test_size=VALIDATION_SPLIT,
-            random_state=RANDOM_SEED,
-            shuffle=True
-        )
+    images_dir = DATA_PATH + 'images_masked' # 'images_prelabeled' #'images_7k/' 
+    labeled = pd.read_csv(DATA_PATH+'new_labeled_v5.csv') # new_labeled
+    labeled = labeled.sample(frac=1)
+    border = int(labeled.shape[0]*(1-VALIDATION_SPLIT))
+    train_index, valid_index = labeled.iloc[:border].index, labeled.iloc[border:].index
     
+    # skf = StratifiedKFold(n_splits=N_SPLITS)
+    # nn_scores = list()
     X, y = labeled.drop(columns='label'), labeled.label.values
     y = 1 - y 
     best_valid = 0
+    # for num, (train_index, valid_index) in enumerate(skf.split(X, y)): # разбивка по индексам
     with mlflow.start_run():
-        print('Loading model and data...', end=' ')
         train_dataset = SiameseRuCLIPDataset(X.iloc[train_index], y[train_index], images_dir=images_dir)
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
         valid_dataset = SiameseRuCLIPDataset(X.iloc[valid_index], y[valid_index], images_dir=images_dir)
         valid_loader = DataLoader(valid_dataset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
         
         model = SiameseRuCLIP(device=DEVICE)
+        with open("siam_summary.txt", "w") as f:
+            f.write(str(summary(model)))
+        mlflow.log_artifact("siam_summary.txt")
+        # for i, child in enumerate(model.children()):
+        #     for param in model.ruclip.parameters():
+        #         param.requires_grad = False
+        # model.ruclip.visual.stages[3].blocks[2].mlp.fc2.requires_grad = True
         criterion = ContrastiveLoss(margin=CONTRASTIVE_MARGIN)
         optimizer = optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
-
-        print('done.')
-
         # mlflow pipeline
         params = {
             "epochs": EPOCHS,
@@ -490,64 +430,19 @@ def main():
             'patience': SHEDULER_PATIENCE, 
             "optimizer": optimizer.__class__.__name__,
         }
-
         mlflow.log_params(params)
-        with open("siam_summary.txt", "w") as f:
-            f.write(str(summary(model)))
-        mlflow.log_artifact("siam_summary.txt")
         ###########
-
         best_valid_score, best_weights = train(model, optimizer, criterion,
             EPOCHS, train_loader, valid_loader, 
-            score=f1_score, print_epoch=True, device=DEVICE
-        )
-
+            score=f1_score, print_epoch=True, device=DEVICE)
+        # make_tg_report(f'Лучший валид скор на {num+1} фолде: {best_valid_score:.3f}')
+        # nn_scores.append(best_valid_score)
         if best_valid_score > best_valid:
             best_valid = best_valid_score
             torch.save(best_weights, f'siamese_contrastive_{SMTH}.pt')
-
-        # save model w/ signature
-        batch = next(iter(valid_loader))
-        im1_ex, name1_ex, desc1_ex, im2_ex, name2_ex, desc2_ex, _ = [
-            t.to(DEVICE).cpu().numpy() for t in batch
-        ]
-        out1_ex, out2_ex = model(
-            torch.from_numpy(im1_ex).to(DEVICE),
-            torch.from_numpy(name1_ex).to(DEVICE),
-            torch.from_numpy(desc1_ex).to(DEVICE),
-            torch.from_numpy(im2_ex).to(DEVICE),
-            torch.from_numpy(name2_ex).to(DEVICE),
-            torch.from_numpy(desc2_ex).to(DEVICE),
-        )
-        out1_ex = out1_ex.cpu().detach().numpy()
-        out2_ex = out2_ex.cpu().detach().numpy()
-
-        # Build dicts of NumPy arrays
-        signature_input  = {
-            "im1":  im1_ex,
-            "name1":name1_ex,
-            "desc1":desc1_ex,
-            "im2":  im2_ex,
-            "name2":name2_ex,
-            "desc2":desc2_ex,
-        }
-        signature_output = {
-            "out1": out1_ex,
-            "out2": out2_ex,
-        }
-
-        # Infer signature
-        signature = infer_signature(signature_input, signature_output)
-
-        # Log only with signature (no input_example)
-        mlflow.pytorch.log_model(
-            model,
-            artifact_path="model",
-            signature=signature
-        )
-
-    if TELEGRAM_TOKEN:
-        make_tg_report(f'Лучший валид лосс: {best_valid:.3f}'+SMTH, TELEGRAM_TOKEN)
+        # mlflow.pytorch.log_model(model, "model") TODO: not logging this yet (just more space)
+    make_tg_report(f'Лучший валид лосс: {best_valid:.3f}'+SMTH)
+    # make_tg_report(f'Среднее среди всех фолдов: {np.mean(nn_scores):.3f}')
     
 if __name__ == '__main__':
     main()
