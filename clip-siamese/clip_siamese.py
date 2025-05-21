@@ -2,8 +2,10 @@
 import os
 
 DATA_PATH = 'data/'
-TABLE_DATASET_FILE = 'labeled_5k_with-options.csv'
+
+TABLE_DATASET_FILE = 'tables_labeled/labeled_5k_with-options.csv'
 IMG_DATASET_NAME = 'images_7k'
+
 NAME_MODEL_NAME = 'DeepPavlov/distilrubert-tiny-cased-conversational-v1'
 DESCRIPTION_MODEL_NAME = 'cointegrated/rubert-tiny'
 
@@ -256,6 +258,9 @@ def train(model, optimizer, criterion,
             if valid_score > best_valid_score:
                 best_valid_score = valid_score
     return best_valid_score
+
+import matplotlib.pyplot as plt
+from IPython import display
 
 def plot_epoch(loss_history)->None:
     display.clear_output(wait=True)
