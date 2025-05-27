@@ -2,7 +2,6 @@ import torch
 
 ## CHOOSE MODEL PARAMETERS #################################################
 
-HIDDEN_DIM = 3*768
 DATA_PATH = 'data/'
 DEVICE='cuda' if torch.cuda.is_available() else 'cpu'
 NAME_MODEL_NAME = 'cointegrated/rubert-tiny' # 'DeepPavlov/distilrubert-tiny-cased-conversational-v1'
@@ -215,27 +214,55 @@ def average_pool(last_hidden_states: Tensor, attention_mask: Tensor) -> Tensor:
         return last_hidden.sum(dim=1) / attention_mask.sum(dim=1)[..., None]
 
 class SiameseRuCLIP(nn.Module):
-    def __init__(self, preload_ruclip=True, device='cpu', hidden_dim=HIDDEN_DIM, models_dir=DATA_PATH + 'train_results/'):
+    def __init__(self,
+                 device: str,
+                 name_model_name: str,
+                 description_model_name: str,
+                 models_dir: str = None,
+                 preload_model_name: str = None):
+        """
+        Initializes the SiameseRuCLIP model.
+        Required parameters:
+          - models_dir: directory containing saved checkpoints.
+          - name_model_name: model name for text (name) branch.
+          - description_model_name: model name for description branch.
+        """
         super().__init__()
-        self.ruclip = RuCLIPtiny()
-        if preload_ruclip:
-            preload_model_name = 'cc12m_rubert_tiny_ep_1.pt' #'cc12m_ddp_4mill_ep_4.pt'
-            std = torch.load(models_dir + preload_model_name, weights_only=True, map_location=device)
+        device = torch.device(device)
+
+        # Initialize RuCLIPtiny
+        self.ruclip = RuCLIPtiny(name_model_name)
+        if preload_model_name is not None:
+            std = torch.load(
+                os.path.join(models_dir, preload_model_name),
+                weights_only=True,
+                map_location=device
+            )
             self.ruclip.load_state_dict(std)
-            self.ruclip = self.ruclip.to(device)
             self.ruclip.eval()
-        self.description_transformer = AutoModel.from_pretrained(DESCRIPTION_MODEL_NAME)
+        self.ruclip = self.ruclip.to(device)
+
+        # Initialize the description transformer
+        self.description_transformer = AutoModel.from_pretrained(description_model_name)
+        self.description_transformer = self.description_transformer.to(device)
+
+        # Determine dimensionality
+        vision_dim = self.ruclip.visual.num_features
+        name_dim = self.ruclip.final_ln.out_features
+        desc_dim = self.description_transformer.config.hidden_size
+        self.hidden_dim = vision_dim + name_dim + desc_dim
+
+        # Define MLP head
         self.head = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.Linear(self.hidden_dim, self.hidden_dim // 2),
             nn.ReLU(),
-            # # nn.BatchNorm1d(hidden_dim),
-            # nn.Dropout(0.3), 
-            # nn.Linear(hidden_dim, hidden_dim // 2),
-            # nn.ReLU(), 
-            nn.Linear(hidden_dim // 2, hidden_dim // 4),
-        )
-        
-    def encode_description(self, desc):
+            nn.Linear(self.hidden_dim // 2, self.hidden_dim // 4),
+        ).to(device)
+
+    def encode_image(self, image):
+        return self.ruclip.encode_image(image)
+
+    de(self, desc):
         # desc is [input_ids, attention_mask]
         last_hidden_states = self.description_transformer(desc[:, 0, :], desc[:, 1, :]).last_hidden_state
         attention_mask = desc[:, 1, :]
