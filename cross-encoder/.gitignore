@@ -2,6 +2,7 @@ datasets
 data
 
 .env
+.cursor
 
 .DS_Store
 .huskyrc.json
