@@ -3,11 +3,13 @@
 # General config
 
 ```
-NAME_MODEL_NAME = 'cointegrated/rubert-tiny' # 'DeepPavlov/distilrubert-tiny-cased-conversational-v1'
-DESCRIPTION_MODEL_NAME = 'cointegrated/rubert-tiny'
-
-PRELOAD_MODEL_NAME = 'cc12m_rubert_tiny_ep_1.pt' # preload ruclip
+# NAME_MODEL_NAME = 'cointegrated/rubert-tiny' # 'DeepPavlov/distilrubert-tiny-cased-conversational-v1'
+# DESCRIPTION_MODEL_NAME = 'cointegrated/rubert-tiny'
 # PRELOAD_MODEL_NAME = None
+
+NAME_MODEL_NAME = None
+DESCRIPTION_MODEL_NAME = None
+PRELOAD_MODEL_NAME = 'cc12m_rubert_tiny_ep_1.pt' # preload ruclip
 
 DROPOUT = 0.5
 # DROPOUT = None
