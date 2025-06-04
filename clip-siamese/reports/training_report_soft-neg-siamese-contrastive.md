@@ -169,7 +169,7 @@ SAVE_EVERY_N_EPOCHS = 2
 
 ## 3. 5000 positives ~ 90 min per epoch
 
-### 2.1 Default config [val F1-score @ 1 ep = 0.829]
+### 3.1 Default config [val F1-score @ 1 ep = 0.829]
 
 ```python
 # GPU config
@@ -194,7 +194,7 @@ SAVE_EVERY_N_EPOCHS = 2
 
 [val] Epoch 5 – loss: 0.8128, P Acc: 0.727, N Acc: 0.936, Avg Acc: 0.832, F1: 0.785, thr*: 1.085 (optimised: f1)
 
-### 2.2 Low LR, low patience, adapted margin [val F1-score @ 6 ep = 0.980 🏆]
+### 3.2 Low LR, low patience, adapted margin [val F1-score @ 6 ep = 0.980 🏆]
 
 ```python
 # GPU config (large)
