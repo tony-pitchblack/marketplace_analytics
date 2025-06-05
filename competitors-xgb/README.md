@@ -2,6 +2,7 @@
 1. Install [micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html)
 2. Run `./setup.sh` to create micromamba env `competitors-xgb`.
 3. Use env `competitors-xgb` for all notebooks & scripts in competitors-xgb/
+3. If imports still fail, try installing with `./setup_frozen.sh`
 
 ## Разрешенный кофликт установки №1
 Пакеты `cython`, `youtokentome` нужно устанавливать в первую очередь (до `requirements.txt`)

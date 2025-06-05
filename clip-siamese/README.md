@@ -10,6 +10,10 @@
 micromamba create -f environment.yml
 ```
 2. Use env `cross-encoder` in all notebooks in `cross-encoder/`
+3. If imports still fail, try installing with
+```
+micromamba create -f environment_frozen.yml
+```
 
 ## Директории
 - `data/images_*` - распакованные изображения для различных датасетов
