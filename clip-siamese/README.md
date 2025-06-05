@@ -18,7 +18,7 @@ micromamba create -f environment.yml
 - `data/train_results/tmp` - временные чекпоинты обученных моделей
 TODO: вынести генерацию папки `tmp` из `data` в ноутбуке `contrastive_train_data-splitting-by-query.ipynb` чтобы не хранить временные чекпоинты вместе с основными
 - `data/walkthough/` - видеогайды по ноутбукам в репозитории
-- `reports` - отчеты
+- `reports` - отчеты/иллюстрации к скринкастам
 
 ## Группы ноутбуков по назначению
 
