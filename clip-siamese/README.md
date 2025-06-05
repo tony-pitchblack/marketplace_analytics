@@ -1,5 +1,16 @@
 # CLIP-Siamese: Мультимодальное сопоставление товаров
 
+# Setup
+0. Install [micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html) with
+```
+"${SHELL}" <(curl -L micro.mamba.pm/install.sh)
+```
+1. Install env `cross-encoder` with
+```
+micromamba create -f environment.yml
+```
+2. Use env `cross-encoder` in all notebooks in `cross-encoder/`
+
 ## Директории
 - `data/images_*` - распакованные изображения для различных датасетов
 - `data/tables_*` - файлы с табличными данными для различных датасетов
