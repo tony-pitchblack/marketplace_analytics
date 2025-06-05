@@ -45,3 +45,7 @@ TODO: вынести генерацию папки `tmp` из `data` в ноут
     4) `contrastive_test_embs_from-source_ruclip-only.ipynb` **(deprecated)** - получить top-k предсказаний модели **RuCLIP** на попарном наборе целевых товаров; 
     5) `contrastive_test.ipynb` **(deprecated)** - тестирование SiameseRuCLIP обученной с контрастным лоссом (логирование в W&B);
     6) `clip_siamese_test.ipynb` **(deprecated)** - тестирование SiameseRuCLIP обученной с лоссом CrossEntropy (логирование в W&B).
+
+## References (не использовалось напрямую, но может помочь)
+1) Ecom-tech product matching pipeline [HABR](https://habr.com/ru/companies/ecom_tech/articles/852646/) - предложили двухстадийный пайплайн: CLIP для отбора кандидатов, Cross-Encoder для финального решения по содержанию. Вместо CLIP используют две модели - одну текстовую, одну визуальную.
+3) WDC-Products: [arxiv](https://arxiv.org/pdf/2301.09521) - показали, что Cross-Encoder с backbone RoBERTa не хуже, чем SOTA (на тот момент), что значит, в теории Cross-Encoder с каким-нибудь backbone для русского языка типа RuRoBERTa-large должен нелохо работать (см. подпроект `cross-encoder`)
