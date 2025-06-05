@@ -1,33 +1,29 @@
 name: cross-encoder
 channels:
-  - pytorch
-  - huggingface
   - conda-forge
-  - defaults
-dependencies:
-  - python=3.12
-  - pip
   - pytorch
-  - cudatoolkit  # Remove this if you're only using CPU
+dependencies:
+  - python
+  - pytorch
+  - pip
   - pip:
-    - sentence-transformers>=2.5.0
-    - hf_xet
-    - hf-transfer
-    - openpyxl
-    - datasets>=2.18.0
-    - transformers>=4.38.0
-    - faiss-cpu>=1.8.0  # Change to faiss-gpu if using GPU
-    - faiss-gpu>=1.8.0  # Change to faiss-cpu if using CPU
-    - evaluate>=0.4.1
-    - wandb>=0.16.0  # For experiment tracking (optional)
-    - numpy>=1.26.0
-    - scikit-learn>=1.4.0
-    - tqdm>=4.66.0
-    - pandas>=2.2.0
-    - python-dotenv>=1.0.0
-    - langchain>=0.2.11
-    - langchain-openai>=0.2.11
-    - langchain-community>=0.2.11
-    - matplotlib>=3.8.0  # For visualizations (optional)
-    - jupyter  # For running the notebook
-    - ipykernel  # For Jupyter notebook kernel 
+    - datasets
+    - sentence-transformers
+    - huggingface-hub
+    - python-dotenv
+    - tqdm
+    - transformers
+    - evaluate
+    - numpy
+    - pandas
+    - scikit-learn
+    - wandb
+    - mlflow
+    - ipykernel
+    - jupyter
+    - matplotlib
+    - pillow
+    - langchain
+    - langchain-openai
+    - langchain-core
+    - rank-bm25 
