@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Verson for frozen dependencies 
 
 set -e  # Exit immediately if a command exits with a non-zero status
 
@@ -11,5 +12,5 @@ micromamba create -n competitors-xgb \
     cython youtokentome -y # NOTE: always install first
 
 # Install remaining deps
-micromamba activate competitors-xgb
-pip install -r requirements.txt
+micromamba activate competitors-xgb 
+pip install -r requirements_frozen.txt
