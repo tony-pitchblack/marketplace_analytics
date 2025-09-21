@@ -16,19 +16,26 @@
 **Для большинства ноутбуков подпроекта clip-siamese доступны скринкасты в `data/walthrhough`, которые можно скачать с помощью `hf_data_download.ipynb` из HF repo `INDEEPA/clip-siamese`.**
 
 В данном подпроекте обучаем модель SiameseRuCLIP для идентификации похожих товаров по содержанию - название, изображение, описание (см. Рисунок 2).
-![Рисунок 2](https://github.com/user-attachments/assets/8a805ef8-615e-409a-b34a-5c634533139a)
+<img src="https://github.com/user-attachments/assets/8a805ef8-615e-409a-b34a-5c634533139a" alt="Рисунок 2" width="50%">
 
 Для разметки данных используем регулярные выражения (в `cross-encoder` приведен пример разметки данных с помощью LLM) чтобы получить пары товаров для контрастного обучения (см. Рисунок 3)
-![Рисунок 3](https://github.com/user-attachments/assets/e2cff909-1053-48c9-8a1e-4767ef9254e8)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/e2cff909-1053-48c9-8a1e-4767ef9254e8" alt="Рисунок 3" width="67%">
+</p>
 
 Важно разделять отрицательные примеры на простые отрицательные и сложные отрицательные для обеспечения разнообразия выборки (см. Рисунок 4)
-![Рисунок 4](https://github.com/user-attachments/assets/19d42048-e20d-4262-b8e6-57b7eca8e0ca)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/19d42048-e20d-4262-b8e6-57b7eca8e0ca" alt="Рисунок 4" width="67%">
+</p>
 
 Чтобы сократить кол-во пар при сохранении разнообразия датасета, кластеризуем простые отрицательные примеры и будем сэмплировать по 1 из каждого кластера (см. Рисунок 5)
-![Рисунок 5](https://github.com/user-attachments/assets/9fc76777-5662-483a-b3dd-8a63369494bb)
-
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/9fc76777-5662-483a-b3dd-8a63369494bb" alt="Рисунок 5" width="67%">
+</p>
 Выбираем порог классификации по ROC-кривой в ноутбуках `contrastive_test_embs_from-*.ipynb` (см. Рисунок 6).
-<img width="846" height="409" alt="Рисунок 6" src="https://github.com/user-attachments/assets/872b75b7-fc52-49e5-bf47-0da378d0938d" />
+<p align="center">
+  <img width="423" height="204" alt="Рисунок 6" src="https://github.com/user-attachments/assets/872b75b7-fc52-49e5-bf47-0da378d0938d" />
+</p>
 
 Модель похожести получает 80-90+ Accuracy на валидации/тесте на попарном датасете OZ_geo_5500 по целевым товарам (товарам продаца 'ИНТЕРТРЕЙД'). См. `clip-siamese/contrastive_test_embs_from-pairwise-rendered.ipynb` и соответствующий скринкаст
 
@@ -50,7 +57,9 @@
 После 50+ итераций улучшения промпта (см. `make_OZ_geo_5500_pairwise-LLM-*.ipynb`) промпт все еще показывал нестабильные результаты. В частности, было выявлено большое кол-во ложноположительных детекций в результирующей LLM разметке, что неприемлемо для контрастного обучения.
 Особые сложности вызывала обработка числовых признаков. Так, на Рисунке 6 приведен пример, когда LLM посчитала два товара из категории географиеских карт дубликатами (D = Duplicate) несмотря на сильное различие в масштабе, что является критической ошибкой при определении конкурентных товаров.
 
-<img width="556" height="285" alt="Рисунок 6" src="https://github.com/user-attachments/assets/738c7415-851f-4567-b7ea-bed6ec2c19a4" />
+<p align="center">
+  <img width="556" height="285" alt="Рисунок 6" src="https://github.com/user-attachments/assets/738c7415-851f-4567-b7ea-bed6ec2c19a4" />
+</p>
 
 Поэтому была предложена альтернативная схема разметики датасета OZ_geo_5500 с помощью регулярных выражений (см. `clip-siamese/make_OZ_geo_5500_pairwise-regex`).
 
