@@ -17,7 +17,9 @@
 **Для большинства ноутбуков подпроекта clip-siamese доступны скринкасты в `data/walthrhough`, которые можно скачать с помощью `hf_data_download.ipynb` из HF repo `INDEEPA/clip-siamese`.**
 
 В данном подпроекте обучаем модель SiameseRuCLIP для идентификации похожих товаров по содержанию - название, изображение, описание (см. Рисунок 2).
-<img src="https://github.com/user-attachments/assets/8a805ef8-615e-409a-b34a-5c634533139a" alt="Рисунок 2" width="50%">
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/8a805ef8-615e-409a-b34a-5c634533139a" alt="Рисунок 2" width="50%">
+</p>
 
 Для разметки данных используем регулярные выражения (в `cross-encoder` приведен пример разметки данных с помощью LLM) чтобы получить пары товаров для контрастного обучения (см. Рисунок 3)
 <p align="center">
